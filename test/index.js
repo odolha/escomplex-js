@@ -1,10 +1,10 @@
 'use strict';
 
-var assert, mockery, spooks, modulePath;
+var assert, mockery, sinon, modulePath;
 
 assert = require('chai').assert;
 mockery = require('mockery');
-spooks = require('spooks');
+sinon = require('sinon');
 
 modulePath = '../src';
 
@@ -12,26 +12,19 @@ mockery.registerAllowable(modulePath);
 mockery.registerAllowable('check-types');
 
 suite('index:', function () {
-    var log, walker;
-
+    var walker, esprimaParse, esComplexAnalyse;
+  
     setup(function () {
-        log = {};
         walker = {};
+        esprimaParse = sinon.stub().returns('esprima.parse result');
+        esComplexAnalyse = sinon.stub().returns('escomplex.analyse result');
         mockery.enable({ useCleanCache: true });
         mockery.registerMock('esprima', {
-            parse: spooks.fn({
-                name: 'esprima.parse',
-                log: log,
-                result: 'esprima.parse result'
-            })
+            parse: esprimaParse
         });
         mockery.registerMock('escomplex-ast-moz', walker);
         mockery.registerMock('escomplex', {
-            analyse: spooks.fn({
-                name: 'escomplex.analyse',
-                log: log,
-                result: 'escomplex.analyse result'
-            })
+            analyse: esComplexAnalyse
         });
     });
 
@@ -40,7 +33,7 @@ suite('index:', function () {
         mockery.deregisterMock('escomplex-ast-moz');
         mockery.deregisterMock('escomplex');
         mockery.disable();
-        log = walker = undefined;
+        walker = undefined;
     });
 
     test('require does not throw', function () {
@@ -75,11 +68,11 @@ suite('index:', function () {
         });
 
         test('esprima.parse was not called', function () {
-            assert.strictEqual(log.counts['esprima.parse'], 0);
+            assert.strictEqual(esprimaParse.callCount, 0);
         });
 
         test('escomplex.analyse was not called', function () {
-            assert.strictEqual(log.counts['escomplex.analyse'], 0);
+            assert.strictEqual(esComplexAnalyse.callCount, 0);
         });
 
         suite('array source:', function () {
@@ -95,66 +88,66 @@ suite('index:', function () {
             });
 
             test('esprima.parse was called twice', function () {
-                assert.strictEqual(log.counts['esprima.parse'], 2);
+                assert.strictEqual(esprimaParse.callCount, 2);
             });
 
             test('esprima.parse was passed two arguments first time', function () {
-                assert.lengthOf(log.args['esprima.parse'][0], 2);
+                assert.lengthOf(esprimaParse.firstCall.args, 2);
             });
 
             test('esprima.parse was given correct source first time', function () {
-                assert.strictEqual(log.args['esprima.parse'][0][0], 'console.log("foo");');
+                assert.strictEqual(esprimaParse.firstCall.args[0], 'console.log("foo");');
             });
 
             test('esprima.parse was given correct options first time', function () {
-                assert.isObject(log.args['esprima.parse'][0][1]);
-                assert.isTrue(log.args['esprima.parse'][0][1].loc);
-                assert.lengthOf(Object.keys(log.args['esprima.parse'][0][1]), 1);
+                assert.isObject(esprimaParse.firstCall.args[1]);
+                assert.isTrue(esprimaParse.firstCall.args[1].loc);
+                assert.lengthOf(Object.keys(esprimaParse.firstCall.args[1]), 1);
             });
 
             test('esprima.parse was passed two arguments second time', function () {
-                assert.lengthOf(log.args['esprima.parse'][1], 2);
+                assert.lengthOf(esprimaParse.secondCall.args, 2);
             });
 
             test('esprima.parse was given correct source second time', function () {
-                assert.strictEqual(log.args['esprima.parse'][1][0], '"bar";');
+                assert.strictEqual(esprimaParse.secondCall.args[0], '"bar";');
             });
 
             test('esprima.parse was given correct options second time', function () {
-                assert.isObject(log.args['esprima.parse'][1][1]);
-                assert.isTrue(log.args['esprima.parse'][1][1].loc);
-                assert.lengthOf(Object.keys(log.args['esprima.parse'][1][1]), 1);
+                assert.isObject(esprimaParse.secondCall.args[1]);
+                assert.isTrue(esprimaParse.secondCall.args[1].loc);
+                assert.lengthOf(Object.keys(esprimaParse.secondCall.args[1]), 1);
             });
 
             test('escomplex.analyse was called once', function () {
-                assert.strictEqual(log.counts['escomplex.analyse'], 1);
+                assert.strictEqual(esComplexAnalyse.callCount, 1);
             });
 
             test('escomplex.analyse was passed three arguments', function () {
-                assert.lengthOf(log.args['escomplex.analyse'][0], 3);
+                assert.lengthOf(esComplexAnalyse.firstCall.args, 3);
             });
 
             test('escomplex.analyse was given correct asts', function () {
-                assert.isArray(log.args['escomplex.analyse'][0][0]);
-                assert.lengthOf(log.args['escomplex.analyse'][0][0], 2);
+                assert.isArray(esComplexAnalyse.firstCall.args[0]);
+                assert.lengthOf(esComplexAnalyse.firstCall.args[0], 2);
 
-                assert.isObject(log.args['escomplex.analyse'][0][0][0]);
-                assert.strictEqual(log.args['escomplex.analyse'][0][0][0].path, '/foo.js');
-                assert.strictEqual(log.args['escomplex.analyse'][0][0][0].ast, 'esprima.parse result');
-                assert.lengthOf(Object.keys(log.args['escomplex.analyse'][0][0][0]), 2);
+                assert.isObject(esComplexAnalyse.firstCall.args[0][0]);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[0][0].path, '/foo.js');
+                assert.strictEqual(esComplexAnalyse.firstCall.args[0][0].ast, 'esprima.parse result');
+                assert.lengthOf(Object.keys(esComplexAnalyse.firstCall.args[0][0]), 2);
 
-                assert.isObject(log.args['escomplex.analyse'][0][0][1]);
-                assert.strictEqual(log.args['escomplex.analyse'][0][0][1].path, '../bar.js');
-                assert.strictEqual(log.args['escomplex.analyse'][0][0][1].ast, 'esprima.parse result');
-                assert.lengthOf(Object.keys(log.args['escomplex.analyse'][0][0][1]), 2);
+                assert.isObject(esComplexAnalyse.firstCall.args[0][1]);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[0][1].path, '../bar.js');
+                assert.strictEqual(esComplexAnalyse.firstCall.args[0][1].ast, 'esprima.parse result');
+                assert.lengthOf(Object.keys(esComplexAnalyse.firstCall.args[0][1]), 2);
             });
 
             test('escomplex.analyse was given correct walker', function () {
-                assert.strictEqual(log.args['escomplex.analyse'][0][1], walker);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[1], walker);
             });
 
             test('escomplex.analyse was given correct options', function () {
-                assert.strictEqual(log.args['escomplex.analyse'][0][2], options);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[2], options);
             });
 
             test('correct result was returned', function () {
@@ -202,41 +195,41 @@ suite('index:', function () {
             });
 
             test('esprima.parse was called once', function () {
-                assert.strictEqual(log.counts['esprima.parse'], 1);
+                assert.strictEqual(esprimaParse.callCount, 1);
             });
 
             test('esprima.parse was passed two arguments', function () {
-                assert.lengthOf(log.args['esprima.parse'][0], 2);
+                assert.lengthOf(esprimaParse.firstCall.args, 2);
             });
 
             test('esprima.parse was given correct source', function () {
-                assert.strictEqual(log.args['esprima.parse'][0][0], 'foo bar baz');
+                assert.strictEqual(esprimaParse.firstCall.args[0], 'foo bar baz');
             });
 
             test('esprima.parse was given correct options', function () {
-                assert.isObject(log.args['esprima.parse'][0][1]);
-                assert.isTrue(log.args['esprima.parse'][0][1].loc);
-                assert.lengthOf(Object.keys(log.args['esprima.parse'][0][1]), 1);
+                assert.isObject(esprimaParse.firstCall.args[1]);
+                assert.isTrue(esprimaParse.firstCall.args[1].loc);
+                assert.lengthOf(Object.keys(esprimaParse.firstCall.args[1]), 1);
             });
 
             test('escomplex.analyse was called once', function () {
-                assert.strictEqual(log.counts['escomplex.analyse'], 1);
+                assert.strictEqual(esComplexAnalyse.callCount, 1);
             });
 
             test('escomplex.analyse was passed three arguments', function () {
-                assert.lengthOf(log.args['escomplex.analyse'][0], 3);
+                assert.lengthOf(esComplexAnalyse.firstCall.args, 3);
             });
 
             test('escomplex.analyse was given correct ast', function () {
-                assert.strictEqual(log.args['escomplex.analyse'][0][0], 'esprima.parse result');
+                assert.strictEqual(esComplexAnalyse.firstCall.args[0], 'esprima.parse result');
             });
 
             test('escomplex.analyse was given correct walker', function () {
-                assert.strictEqual(log.args['escomplex.analyse'][0][1], walker);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[1], walker);
             });
 
             test('escomplex.analyse was given correct options', function () {
-                assert.strictEqual(log.args['escomplex.analyse'][0][2], options);
+                assert.strictEqual(esComplexAnalyse.firstCall.args[2], options);
             });
 
             test('correct result was returned', function () {
